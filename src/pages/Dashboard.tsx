@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { Chat, Message, getChats, saveChat, createNewChat, deleteChat } from '@/utils/storage';
 import { incrementPromptUsage, getRemainingPrompts } from '@/utils/auth';
-import { AI_MODELS, selectBestModel, classifyPrompt } from '@/utils/aiModels';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Dashboard() {
   const { user, isAuthenticated, refreshUser } = useAuth();
@@ -25,8 +25,6 @@ export default function Dashboard() {
   const [activeChat, setActiveChat] = useState<Chat | null>(null);
   const [inputValue, setInputValue] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
-  const [autoAI, setAutoAI] = useState(true);
-  const [selectedModels, setSelectedModels] = useState<string[]>(['llama-3.1-8b-instant']);
   const [searchQuery, setSearchQuery] = useState('');
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -98,80 +96,28 @@ export default function Dashboard() {
     toast({ title: 'Chat deleted' });
   };
 
-  const simulateAIResponse = async (prompt: string, model: string, chat?: Chat): Promise<string> => {
-    // Simulate streaming delay
-    await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
-    
-    // If avatar mode, respond with avatar personality
-    if (chat?.avatarId) {
-      return getAvatarResponse(prompt, chat.avatarId);
+  const callAIAPI = async (messages: Array<{role: string; content: string}>, avatarId?: string): Promise<string> => {
+    const { data, error } = await supabase.functions.invoke('chat', {
+      body: { messages, avatarId }
+    });
+
+    if (error) {
+      console.error('AI API error:', error);
+      throw new Error(error.message || 'Failed to get AI response');
     }
-    
-    // Simple, direct responses matching user's tone
-    const lowerPrompt = prompt.toLowerCase().trim();
-    
-    // Greeting responses
-    if (lowerPrompt === 'hii' || lowerPrompt === 'hi' || lowerPrompt === 'hello') {
-      return ['Hi!', 'Hello!', 'Hey there!'][Math.floor(Math.random() * 3)];
+
+    if (data?.error) {
+      throw new Error(data.error);
     }
-    
-    // Keep responses short and natural
-    if (prompt.length < 30) {
-      // For short prompts, give short responses
-      return `Got it! ${prompt}`;
+
+    const content = data?.choices?.[0]?.message?.content;
+    if (!content) {
+      throw new Error('No response from AI');
     }
-    
-    // For longer prompts, still be concise
-    return `Here's my response to your question: ${prompt.slice(0, 100)}...`;
+
+    return content;
   };
 
-  const getAvatarResponse = (prompt: string, avatarId: string): string => {
-    const lowerPrompt = prompt.toLowerCase();
-    
-    // Avatar-specific responses with personality
-    const avatarResponses: Record<string, any> = {
-      'gandhi': {
-        greeting: 'Namaste! How may I guide you today?',
-        default: `In the spirit of truth and non-violence, I believe ${prompt.slice(0, 50)}... requires us to look within ourselves first.`
-      },
-      'bhagat-singh': {
-        greeting: 'Inquilab Zindabad! What brings you here?',
-        default: `Revolution is not just in actions, but in thoughts. About ${prompt.slice(0, 50)}... - we must think fearlessly!`
-      },
-      'apj-kalam': {
-        greeting: 'Hello young friend! What dreams shall we discuss today?',
-        default: `Dream, dream, dream! Regarding ${prompt.slice(0, 50)}... - dreams transform into thoughts and thoughts result in action.`
-      },
-      'rani-laxmibai': {
-        greeting: 'Welcome, warrior! What battle do you face today?',
-        default: `With courage and determination, we can face anything. About ${prompt.slice(0, 50)}... - never surrender!`
-      },
-      'einstein': {
-        greeting: 'Greetings! What mysteries shall we explore?',
-        default: `Imagination is more important than knowledge. Regarding ${prompt.slice(0, 50)}... - let's think creatively!`
-      },
-      'elon-musk': {
-        greeting: 'Hey! What problem are we solving today?',
-        default: `First principles thinking: ${prompt.slice(0, 50)}... - let's break this down to fundamentals and rebuild.`
-      },
-      'nehru': {
-        greeting: 'Greetings! What wisdom do you seek?',
-        default: `Unity in diversity is our strength. About ${prompt.slice(0, 50)}... - let us find common ground.`
-      },
-      'bose': {
-        greeting: 'Jai Hind! Ready to march forward?',
-        default: `Freedom is not given, it is taken! Regarding ${prompt.slice(0, 50)}... - action speaks louder than words!`
-      }
-    };
-    
-    const avatar = avatarResponses[avatarId] || avatarResponses['gandhi'];
-    
-    if (lowerPrompt === 'hii' || lowerPrompt === 'hi' || lowerPrompt === 'hello') {
-      return avatar.greeting;
-    }
-    
-    return avatar.default;
-  };
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || !user || !activeChat) return;
@@ -209,65 +155,37 @@ export default function Dashboard() {
     refreshUser();
 
     try {
-      if (autoAI) {
-        // Auto-AI: select best model
-        const promptType = classifyPrompt(inputValue);
-        const bestModel = selectBestModel(promptType);
-        
-        const response = await simulateAIResponse(inputValue, bestModel.name, activeChat);
-        
-        const aiMessage: Message = {
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          content: response,
-          model: bestModel.name,
-          timestamp: new Date().toISOString(),
-        };
+      // Build conversation history
+      const conversationMessages = updatedChat.messages.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
 
-        const finalChat = {
-          ...updatedChat,
-          messages: [...updatedChat.messages, aiMessage],
-          updatedAt: new Date().toISOString(),
-        };
+      // Call AI API
+      const response = await callAIAPI(conversationMessages, activeChat?.avatarId);
+      
+      const aiMessage: Message = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: response,
+        model: 'AI',
+        timestamp: new Date().toISOString(),
+      };
 
-        setActiveChat(finalChat);
-        saveChat(user.id, finalChat);
-        setChats(chats.map(c => c.id === finalChat.id ? finalChat : c));
-      } else {
-        // Multi-model comparison
-        const models = selectedModels.slice(0, 3);
-        const responses = await Promise.all(
-          models.map(modelId => {
-            const model = AI_MODELS.find(m => m.id === modelId);
-            return simulateAIResponse(inputValue, model?.name || modelId, activeChat);
-          })
-        );
+      const finalChat = {
+        ...updatedChat,
+        messages: [...updatedChat.messages, aiMessage],
+        updatedAt: new Date().toISOString(),
+      };
 
-        const aiMessages: Message[] = models.map((modelId, index) => {
-          const model = AI_MODELS.find(m => m.id === modelId);
-          return {
-            id: crypto.randomUUID(),
-            role: 'assistant' as const,
-            content: responses[index],
-            model: model?.name || modelId,
-            timestamp: new Date().toISOString(),
-          };
-        });
-
-        const finalChat = {
-          ...updatedChat,
-          messages: [...updatedChat.messages, ...aiMessages],
-          updatedAt: new Date().toISOString(),
-        };
-
-        setActiveChat(finalChat);
-        saveChat(user.id, finalChat);
-        setChats(chats.map(c => c.id === finalChat.id ? finalChat : c));
-      }
+      setActiveChat(finalChat);
+      saveChat(user.id, finalChat);
+      setChats(chats.map(c => c.id === finalChat.id ? finalChat : c));
     } catch (error) {
+      console.error('Chat error:', error);
       toast({
         title: 'Error',
-        description: 'Failed to get AI response. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to get AI response. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -406,31 +324,10 @@ export default function Dashboard() {
                     {activeChat.avatarName}
                   </Badge>
                 )}
-                <Button
-                  size="sm"
-                  variant={autoAI ? 'default' : 'outline'}
-                  onClick={() => setAutoAI(!autoAI)}
-                  className={autoAI ? 'bg-primary' : ''}
-                  disabled={!!activeChat?.avatarId}
-                >
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Auto-AI
-                </Button>
-                
-                {!autoAI && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Models:</span>
-                    <select
-                      value={selectedModels[0]}
-                      onChange={(e) => setSelectedModels([e.target.value])}
-                      className="text-sm bg-background border border-border rounded-md px-2 py-1"
-                    >
-                      {AI_MODELS.slice(0, 10).map(model => (
-                        <option key={model.id} value={model.id}>{model.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                <Badge variant="secondary" className="text-xs">
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  AI Powered
+                </Badge>
               </div>
 
               <div className="flex items-center gap-2">
