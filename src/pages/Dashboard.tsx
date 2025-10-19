@@ -25,6 +25,8 @@ export default function Dashboard() {
   const [activeChat, setActiveChat] = useState<Chat | null>(null);
   const [inputValue, setInputValue] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
+  const [autoAI, setAutoAI] = useState(true);
+  const [selectedModel, setSelectedModel] = useState('google/gemini-2.5-flash');
   const [searchQuery, setSearchQuery] = useState('');
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -96,9 +98,9 @@ export default function Dashboard() {
     toast({ title: 'Chat deleted' });
   };
 
-  const callAIAPI = async (messages: Array<{role: string; content: string}>, avatarId?: string): Promise<string> => {
+  const callAIAPI = async (messages: Array<{role: string; content: string}>, avatarId?: string, model?: string): Promise<string> => {
     const { data, error } = await supabase.functions.invoke('chat', {
-      body: { messages, avatarId }
+      body: { messages, avatarId, model }
     });
 
     if (error) {
@@ -117,6 +119,15 @@ export default function Dashboard() {
 
     return content;
   };
+
+  const aiModels = [
+    { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
+    { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
+    { id: 'google/gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite' },
+    { id: 'openai/gpt-5', name: 'GPT-5' },
+    { id: 'openai/gpt-5-mini', name: 'GPT-5 Mini' },
+    { id: 'openai/gpt-5-nano', name: 'GPT-5 Nano' },
+  ];
 
 
   const handleSendMessage = async () => {
@@ -161,14 +172,19 @@ export default function Dashboard() {
         content: msg.content
       }));
 
-      // Call AI API
-      const response = await callAIAPI(conversationMessages, activeChat?.avatarId);
+      // Call AI API with selected model if Auto AI is off
+      const modelToUse = autoAI ? undefined : selectedModel;
+      const response = await callAIAPI(conversationMessages, activeChat?.avatarId, modelToUse);
+      
+      const modelName = autoAI 
+        ? 'Auto AI' 
+        : aiModels.find(m => m.id === selectedModel)?.name || selectedModel;
       
       const aiMessage: Message = {
         id: crypto.randomUUID(),
         role: 'assistant',
         content: response,
-        model: 'AI',
+        model: modelName,
         timestamp: new Date().toISOString(),
       };
 
@@ -317,17 +333,35 @@ export default function Dashboard() {
           {/* Toolbar */}
           <div className="border-b border-border/50 bg-card/30 p-4 flex-shrink-0">
             <div className="flex items-center justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 {activeChat?.avatarId && (
                   <Badge variant="outline" className="text-sm">
                     <User className="h-3 w-3 mr-1" />
                     {activeChat.avatarName}
                   </Badge>
                 )}
-                <Badge variant="secondary" className="text-xs">
-                  <Sparkles className="h-3 w-3 mr-1" />
-                  AI Powered
-                </Badge>
+                
+                <Button
+                  size="sm"
+                  variant={autoAI ? 'default' : 'outline'}
+                  onClick={() => setAutoAI(!autoAI)}
+                  disabled={!!activeChat?.avatarId}
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Auto AI
+                </Button>
+                
+                {!autoAI && !activeChat?.avatarId && (
+                  <select
+                    value={selectedModel}
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                    className="text-sm bg-background border border-border rounded-md px-3 py-1.5 z-50"
+                  >
+                    {aiModels.map(model => (
+                      <option key={model.id} value={model.id}>{model.name}</option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div className="flex items-center gap-2">
