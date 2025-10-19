@@ -295,12 +295,12 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
       <Header />
       
-      <div className="flex-1 flex overflow-hidden h-[calc(100vh-64px)]">
+      <div className="flex-1 flex overflow-hidden">
         {/* Sidebar - Separate Scroll */}
-        <aside className="w-80 border-r border-border/50 bg-card/30 flex flex-col h-full overflow-hidden">
+        <aside className="w-80 border-r border-border/50 bg-card/30 flex flex-col overflow-hidden">
           {/* User Profile */}
           <div className="p-4 border-b border-border/50 flex-shrink-0">
             <div className="flex items-center gap-3 mb-4">
@@ -346,7 +346,7 @@ export default function Dashboard() {
           </div>
 
           {/* Chat List */}
-          <div className="flex-1 overflow-y-auto p-2">
+          <div className="flex-1 overflow-y-auto p-2 min-h-0">
             {filteredChats.map((chat) => (
               <button
                 key={chat.id}
@@ -395,7 +395,7 @@ export default function Dashboard() {
         </aside>
 
         {/* Main Chat Area - Separate Scroll */}
-        <main className="flex-1 flex flex-col h-full overflow-hidden">
+        <main className="flex-1 flex flex-col overflow-hidden min-w-0">
           {/* Toolbar */}
           <div className="border-b border-border/50 bg-card/30 p-4 flex-shrink-0">
             <div className="flex items-center justify-between flex-wrap gap-4">
@@ -450,7 +450,7 @@ export default function Dashboard() {
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto p-6 space-y-6 min-h-0">
             {activeChat?.messages.length === 0 ? (
               <div className="h-full flex items-center justify-center">
                 <div className="text-center max-w-md">
