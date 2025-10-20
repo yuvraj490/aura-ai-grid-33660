@@ -195,10 +195,114 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* SEO Content Section */}
+      <section className="py-16 bg-background">
+        <div className="container mx-auto px-4">
+          <article className="max-w-4xl mx-auto prose prose-lg dark:prose-invert">
+            <h2 className="text-3xl font-bold mb-6">What is Multi-AI Hub by YuvrajBold?</h2>
+            
+            <p className="text-lg text-muted-foreground mb-6">
+              Multi-AI Hub is the ultimate AI chat platform created by YuvrajBold that lets you chat with multiple AI models and realistic AI avatars all in one place. Whether you want to compare responses from different AI models like Gemini 2.5 Pro, GPT-5, or have a philosophical conversation with Gandhi Ji's AI avatar, Multi-AI Hub makes it possible.
+            </p>
+
+            <h2 className="text-2xl font-bold mb-4 mt-8">Why Choose Multi-AI Hub?</h2>
+            
+            <p className="text-muted-foreground mb-4">
+              Unlike other AI chat platforms, Multi-AI Hub by YuvrajBold offers a unique multi-AI experience. You can chat with historical figures like Albert Einstein AI chatbot, get business advice from the Elon Musk AI chatbot, or seek wisdom from the Gandhi Ji AI bot. Our platform integrates multiple AI models including Google's Gemini AI and OpenAI's GPT-5 series, giving you access to the best AI responses available.
+            </p>
+
+            <h3 className="text-xl font-bold mb-4 mt-6">Chat with AI Avatars and Personalities</h3>
+            
+            <p className="text-muted-foreground mb-4">
+              Experience conversations with legendary personalities brought to life through advanced AI:
+            </p>
+
+            <ul className="list-disc pl-6 text-muted-foreground space-y-2 mb-6">
+              <li><strong>Gandhi Ji AI Bot</strong> - Get spiritual guidance and wisdom from Mahatma Gandhi's AI avatar</li>
+              <li><strong>Albert Einstein AI Chat</strong> - Discuss physics, mathematics, and philosophy with Einstein's AI persona</li>
+              <li><strong>Elon Musk AI Chatbot</strong> - Talk technology, innovation, and entrepreneurship with Elon's AI character</li>
+            </ul>
+
+            <h3 className="text-xl font-bold mb-4 mt-6">Multiple AI Models in One Platform</h3>
+            
+            <p className="text-muted-foreground mb-4">
+              Multi-AI Hub integrates cutting-edge AI models to give you the best responses:
+            </p>
+
+            <ul className="list-disc pl-6 text-muted-foreground space-y-2 mb-6">
+              <li><strong>Google Gemini 2.5 Pro</strong> - Advanced reasoning and multimodal capabilities</li>
+              <li><strong>Google Gemini 2.5 Flash</strong> - Fast, efficient AI responses</li>
+              <li><strong>OpenAI GPT-5</strong> - Powerful language understanding and generation</li>
+              <li><strong>GPT-5 Mini & Nano</strong> - Optimized for speed and efficiency</li>
+            </ul>
+
+            <h3 className="text-xl font-bold mb-4 mt-6">Features That Make Us Different</h3>
+            
+            <ul className="list-disc pl-6 text-muted-foreground space-y-2 mb-6">
+              <li><strong>Auto AI Routing</strong> - Our smart system automatically selects the best AI model for your query</li>
+              <li><strong>Side-by-Side Comparison</strong> - Compare responses from different AI models in real-time</li>
+              <li><strong>Realistic AI Character Chat</strong> - Talk to famous personalities with personality-matched responses</li>
+              <li><strong>Free and Premium Plans</strong> - Start free with 10 daily prompts or upgrade for unlimited access</li>
+              <li><strong>Secure and Private</strong> - Your conversations are encrypted and secure</li>
+            </ul>
+
+            <h2 className="text-2xl font-bold mb-4 mt-8">Who is Multi-AI Hub For?</h2>
+            
+            <p className="text-muted-foreground mb-4">
+              Multi-AI Hub by YuvrajBold is perfect for:
+            </p>
+
+            <ul className="list-disc pl-6 text-muted-foreground space-y-2 mb-6">
+              <li><strong>Students and Researchers</strong> - Get help with complex topics from AI experts</li>
+              <li><strong>Content Creators</strong> - Generate ideas and get creative assistance</li>
+              <li><strong>Entrepreneurs</strong> - Brainstorm with AI avatars of successful innovators</li>
+              <li><strong>AI Enthusiasts</strong> - Compare and explore different AI models</li>
+              <li><strong>Anyone Curious</strong> - Have meaningful conversations with historical figures</li>
+            </ul>
+
+            <h2 className="text-2xl font-bold mb-4 mt-8">Start Your Multi-AI Journey Today</h2>
+            
+            <p className="text-muted-foreground mb-6">
+              Join thousands of users already experiencing the future of AI chat with Multi-AI Hub by YuvrajBold. Whether you want to chat with AI avatars, compare multiple AI models, or simply get the best AI responses for your questions, Multi-AI Hub is your all-in-one AI assistant platform.
+            </p>
+
+            <p className="text-muted-foreground mb-4">
+              Sign up now for free and get 10 prompts per day to chat with Gandhi Ji AI, Einstein AI, or any of our advanced AI models. Upgrade to Premium for unlimited access to all 15+ AI models and custom avatar creation.
+            </p>
+
+            <h3 className="text-xl font-bold mb-4 mt-6">Frequently Asked Questions</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-bold mb-2">Can I really chat with Gandhi Ji or Einstein?</h4>
+                <p className="text-muted-foreground">Yes! Our AI avatars are trained to respond in the style and personality of these legendary figures, providing an educational and engaging experience.</p>
+              </div>
+              
+              <div>
+                <h4 className="font-bold mb-2">What AI models does Multi-AI Hub support?</h4>
+                <p className="text-muted-foreground">We support 15+ AI models including Google Gemini 2.5 Pro, GPT-5, GPT-5 Mini, Gemini Flash, and many more cutting-edge models.</p>
+              </div>
+              
+              <div>
+                <h4 className="font-bold mb-2">Is Multi-AI Hub free to use?</h4>
+                <p className="text-muted-foreground">Yes! We offer a free plan with 10 prompts per day. Premium plans start at ₹499/month for unlimited access.</p>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
       {/* Footer */}
-      <footer className="border-t border-border/50 py-8 bg-card/30">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>&copy; 2025 Multi-AI Hub. All rights reserved.</p>
+      <footer className="border-t border-border/50 py-12 bg-card/30">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto text-center space-y-4">
+            <p className="text-sm text-muted-foreground">
+              © 2025 Multi-AI Hub by YuvrajBold – All Rights Reserved.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Chat with multiple AI models | AI avatar conversations | Gandhi Ji AI | Einstein AI | Elon Musk AI | Gemini AI | GPT-5 AI
+            </p>
+          </div>
         </div>
       </footer>
     </div>

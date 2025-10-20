@@ -14,16 +14,117 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      chat_logs: {
+        Row: {
+          avatar_id: string | null
+          avatar_name: string | null
+          created_at: string
+          id: string
+          model: string | null
+          prompt_length: number
+          response_length: number
+          user_id: string
+        }
+        Insert: {
+          avatar_id?: string | null
+          avatar_name?: string | null
+          created_at?: string
+          id?: string
+          model?: string | null
+          prompt_length?: number
+          response_length?: number
+          user_id: string
+        }
+        Update: {
+          avatar_id?: string | null
+          avatar_name?: string | null
+          created_at?: string
+          id?: string
+          model?: string | null
+          prompt_length?: number
+          response_length?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          last_reset_date: string
+          name: string
+          plan: Database["public"]["Enums"]["subscription_plan"]
+          prompts_limit: number
+          prompts_used: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id: string
+          last_reset_date?: string
+          name: string
+          plan?: Database["public"]["Enums"]["subscription_plan"]
+          prompts_limit?: number
+          prompts_used?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          last_reset_date?: string
+          name?: string
+          plan?: Database["public"]["Enums"]["subscription_plan"]
+          prompts_limit?: number
+          prompts_used?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      increment_prompt_usage: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
+      reset_daily_prompts: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
+      subscription_plan: "free" | "premium"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +251,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+      subscription_plan: ["free", "premium"],
+    },
   },
 } as const
