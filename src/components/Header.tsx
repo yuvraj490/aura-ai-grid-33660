@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
 import { Button } from './ui/button';
 import { Sparkles, Menu } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 
 export const Header = () => {
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, logout, isAdmin } = useSupabaseAuth();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-md">
@@ -34,7 +34,7 @@ export const Header = () => {
               <Link to="/help" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Help
               </Link>
-              {user && user.email === 'ys8800221@gmail.com' && (
+              {isAdmin && (
                 <Link to="/admin" className="text-sm text-primary hover:text-primary/80 transition-colors font-medium">
                   Admin
                 </Link>
