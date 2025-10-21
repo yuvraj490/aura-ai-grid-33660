@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Send, Plus, Search, Pin, Trash2, Settings, MessageSquare, 
@@ -16,7 +16,8 @@ import { incrementPromptUsage, getRemainingPrompts } from '@/utils/auth';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function Dashboard() {
-  const { user, isAuthenticated, refreshUser } = useAuth();
+  const { profile, isAuthenticated, refreshUser } = useSupabaseAuth();
+  const user = profile;
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -222,7 +223,7 @@ export default function Dashboard() {
   };
 
   const remainingPrompts = getRemainingPrompts();
-  const promptUsagePercent = user ? (user.promptsUsed / user.promptsLimit) * 100 : 0;
+  const promptUsagePercent = user ? (user.prompts_used / user.prompts_limit) * 100 : 0;
 
   const filteredChats = chats.filter(chat =>
     chat.title.toLowerCase().includes(searchQuery.toLowerCase())

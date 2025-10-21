@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { MessageSquare, Search, Sparkles, Plus } from 'lucide-react';
 
 interface Avatar {
@@ -87,7 +87,8 @@ const AVATARS: Avatar[] = [
 ];
 
 export default function Avatars() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, profile } = useSupabaseAuth();
+  const user = profile;
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');

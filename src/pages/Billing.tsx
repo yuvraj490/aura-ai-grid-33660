@@ -6,13 +6,14 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { updateUser } from '@/utils/auth';
+import { supabase } from '@/integrations/supabase/client';
 import { Check, CreditCard, Sparkles } from 'lucide-react';
 
 export default function Billing() {
-  const { user, isAuthenticated, refreshUser } = useAuth();
+  const { profile, isAuthenticated, refreshUser } = useSupabaseAuth();
+  const user = profile;
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -72,36 +73,43 @@ export default function Billing() {
         'API access (coming soon)',
         'Team collaboration (coming soon)',
       ],
-      current: user.plan === 'annual',
+      current: user.plan === 'premium',
     },
   ];
 
   const handleUpgrade = async (planId: string) => {
-    if (planId === 'free') return;
+    if (planId === 'free' || !user) return;
     
-    setSelectedPlan(planId as 'premium' | 'annual');
+    setSelectedPlan(planId as 'premium');
     setIsProcessing(true);
 
     // Simulate payment processing
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    if (user) {
-      const updatedUser = {
-        ...user,
-        plan: planId as 'free' | 'premium' | 'annual',
-        promptsLimit: planId === 'free' ? 10 : 999999,
-      };
-      updateUser(updatedUser);
-      refreshUser();
+    const { error } = await supabase
+      .from('profiles')
+      .update({ 
+        plan: planId as 'free' | 'premium',
+        prompts_limit: planId === 'free' ? 10 : 999999,
+      })
+      .eq('id', user.id);
 
+    if (error) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } else {
+      await refreshUser();
       toast({
         title: 'Subscription updated!',
         description: `You are now on the ${planId} plan. Enjoy unlimited AI access!`,
       });
-
-      setIsProcessing(false);
-      setSelectedPlan(null);
     }
+
+    setIsProcessing(false);
+    setSelectedPlan(null);
   };
 
   const applyCoupon = () => {

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { getAllUsers, updateUser, User as UserType } from '@/utils/auth';
 import { getChats } from '@/utils/storage';
@@ -15,7 +15,8 @@ import {
 } from 'lucide-react';
 
 export default function Admin() {
-  const { user, isAdmin, isAuthenticated } = useAuth();
+  const { profile, isAdmin, isAuthenticated } = useSupabaseAuth();
+  const user = profile;
   const navigate = useNavigate();
   const { toast } = useToast();
 

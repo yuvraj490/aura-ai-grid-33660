@@ -6,13 +6,14 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { updateUser } from '@/utils/auth';
+import { supabase } from '@/integrations/supabase/client';
 import { User, CreditCard, Bell, Shield, Download, Trash2 } from 'lucide-react';
 
 export default function Settings() {
-  const { user, isAuthenticated, refreshUser, logout } = useAuth();
+  const { profile, isAuthenticated, refreshUser, logout } = useSupabaseAuth();
+  const user = profile;
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -27,20 +28,38 @@ export default function Settings() {
     return null;
   }
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     if (user) {
-      const updatedUser = { ...user, name, email };
-      updateUser(updatedUser);
-      refreshUser();
-      toast({ title: 'Profile updated', description: 'Your changes have been saved.' });
+      const { error } = await supabase
+        .from('profiles')
+        .update({ name, email })
+        .eq('id', user.id);
+
+      if (error) {
+        toast({ 
+          title: 'Error updating profile', 
+          description: error.message,
+          variant: 'destructive'
+        });
+      } else {
+        await refreshUser();
+        toast({ title: 'Profile updated', description: 'Your changes have been saved.' });
+      }
     }
   };
 
-  const handleExportData = () => {
-    // Export user data and chats as JSON
+  const handleExportData = async () => {
+    if (!user) return;
+    
+    // Export user data and chats from Supabase
+    const { data: chatLogs } = await supabase
+      .from('chat_logs')
+      .select('*')
+      .eq('user_id', user.id);
+    
     const data = {
       user,
-      chats: localStorage.getItem(`multiAiHub_chats_${user.id}`),
+      chats: chatLogs || [],
       exportDate: new Date().toISOString(),
     };
     
@@ -54,17 +73,27 @@ export default function Settings() {
     toast({ title: 'Data exported', description: 'Your data has been downloaded.' });
   };
 
-  const handleDeleteAccount = () => {
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    
     if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-      // Delete all user data
-      localStorage.removeItem(`multiAiHub_chats_${user.id}`);
-      const users = JSON.parse(localStorage.getItem('multiAiHub_users') || '[]');
-      const filteredUsers = users.filter((u: any) => u.id !== user.id);
-      localStorage.setItem('multiAiHub_users', JSON.stringify(filteredUsers));
+      // Delete user profile and related data (cascade delete will handle chat_logs)
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', user.id);
       
-      logout();
-      toast({ title: 'Account deleted', description: 'Your account has been permanently deleted.' });
-      navigate('/');
+      if (error) {
+        toast({ 
+          title: 'Error', 
+          description: error.message,
+          variant: 'destructive'
+        });
+      } else {
+        await logout();
+        toast({ title: 'Account deleted', description: 'Your account has been permanently deleted.' });
+        navigate('/');
+      }
     }
   };
 
@@ -134,9 +163,9 @@ export default function Settings() {
                 <div className="flex items-center justify-between p-4 bg-background/50 rounded-lg">
                   <div>
                     <p className="font-semibold capitalize">{user.plan} Plan</p>
-                    <p className="text-sm text-muted-foreground">
-                      {user.plan === 'free' ? `${user.promptsUsed}/${user.promptsLimit} prompts used today` : 'Unlimited prompts'}
-                    </p>
+                  <p className="text-sm text-muted-foreground">
+                    {user?.plan === 'free' ? `${user.prompts_used}/${user.prompts_limit} prompts used today` : 'Unlimited prompts'}
+                  </p>
                   </div>
                   {user.plan === 'free' && (
                     <Button onClick={() => navigate('/billing')} size="sm">
