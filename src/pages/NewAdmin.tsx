@@ -22,6 +22,7 @@ interface UserData {
   prompts_limit: number;
   created_at: string;
   chat_count: number;
+  last_active?: string;
 }
 
 export default function NewAdmin() {
@@ -53,7 +54,8 @@ export default function NewAdmin() {
     // Fetch all users with their profiles
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('*');
+      .select('*')
+      .order('created_at', { ascending: false });
 
     if (profilesError) {
       console.error('Error loading profiles:', profilesError);
@@ -63,7 +65,7 @@ export default function NewAdmin() {
     // Fetch chat logs to count
     const { data: chatLogs, error: logsError } = await supabase
       .from('chat_logs')
-      .select('*');
+      .select('user_id, created_at');
 
     if (logsError) {
       console.error('Error loading chat logs:', logsError);
@@ -80,15 +82,23 @@ export default function NewAdmin() {
       }
     });
 
-    // Count chats per user
+    // Count chats per user and get last active
     const userChatCounts: { [key: string]: number } = {};
+    const userLastActive: { [key: string]: string } = {};
+    
     chatLogs?.forEach(log => {
       userChatCounts[log.user_id] = (userChatCounts[log.user_id] || 0) + 1;
+      
+      if (!userLastActive[log.user_id] || 
+          new Date(log.created_at) > new Date(userLastActive[log.user_id])) {
+        userLastActive[log.user_id] = log.created_at;
+      }
     });
 
     const usersWithChatCount = profiles?.map(profile => ({
       ...profile,
-      chat_count: userChatCounts[profile.id] || 0
+      chat_count: userChatCounts[profile.id] || 0,
+      last_active: userLastActive[profile.id]
     })) || [];
 
     setAllUsers(usersWithChatCount);
@@ -97,7 +107,7 @@ export default function NewAdmin() {
       totalUsers: profiles?.length || 0,
       activeToday: activeToday.size,
       totalChats: chatLogs?.length || 0,
-      totalMessages: chatLogs?.reduce((sum, log) => sum + (log.response_length || 0), 0) || 0,
+      totalMessages: chatLogs?.length || 0,
       freeUsers: profiles?.filter(u => u.plan === 'free').length || 0,
       premiumUsers: profiles?.filter(u => u.plan === 'premium').length || 0,
     });
@@ -286,6 +296,8 @@ export default function NewAdmin() {
                     <th className="text-left p-3 font-semibold">Plan</th>
                     <th className="text-left p-3 font-semibold">Prompts Used</th>
                     <th className="text-left p-3 font-semibold">Chats</th>
+                    <th className="text-left p-3 font-semibold">Joined</th>
+                    <th className="text-left p-3 font-semibold">Last Active</th>
                     <th className="text-left p-3 font-semibold">Actions</th>
                   </tr>
                 </thead>
@@ -310,6 +322,12 @@ export default function NewAdmin() {
                         </span>
                       </td>
                       <td className="p-3">{u.chat_count}</td>
+                      <td className="p-3 text-xs text-muted-foreground">
+                        {new Date(u.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="p-3 text-xs text-muted-foreground">
+                        {u.last_active ? new Date(u.last_active).toLocaleDateString() : 'Never'}
+                      </td>
                       <td className="p-3">
                         <div className="flex gap-2">
                           <Button

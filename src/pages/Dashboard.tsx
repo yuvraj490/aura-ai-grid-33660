@@ -9,7 +9,8 @@ import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Send, Plus, Search, Pin, Trash2, Settings, MessageSquare, 
-  Sparkles, User, Bot, Copy, RefreshCw, Square, Loader2
+  Sparkles, User, Bot, Copy, RefreshCw, Square, Loader2, 
+  Paperclip, X, FileText, Globe, BookOpen, Code, Briefcase
 } from 'lucide-react';
 import { Chat, Message, getChats, saveChat, createNewChat, deleteChat } from '@/utils/storage';
 import { incrementPromptUsage, getRemainingPrompts } from '@/utils/auth';
@@ -29,9 +30,12 @@ export default function Dashboard() {
   const [autoAI, setAutoAI] = useState(true);
   const [selectedModel, setSelectedModel] = useState('google/gemini-2.5-flash');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedMode, setSelectedMode] = useState<string>('general');
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -99,9 +103,9 @@ export default function Dashboard() {
     toast({ title: 'Chat deleted' });
   };
 
-  const callAIAPI = async (messages: Array<{role: string; content: string}>, avatarId?: string, model?: string): Promise<string> => {
+  const callAIAPI = async (messages: Array<{role: string; content: string}>, avatarId?: string, model?: string, mode?: string): Promise<string> => {
     const { data, error } = await supabase.functions.invoke('chat', {
-      body: { messages, avatarId, model }
+      body: { messages, avatarId, model, mode }
     });
 
     if (error) {
@@ -131,6 +135,19 @@ export default function Dashboard() {
   ];
 
 
+  const handleFileAttach = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setAttachedFiles(prev => [...prev, ...files].slice(0, 5)); // Max 5 files
+  };
+
+  const removeFile = (index: number) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSendMessage = async () => {
     if (!inputValue.trim() || !user || !activeChat) return;
 
@@ -145,10 +162,23 @@ export default function Dashboard() {
       return;
     }
 
+    let messageContent = inputValue;
+    
+    // Read file contents if attached
+    if (attachedFiles.length > 0) {
+      const fileContents = await Promise.all(
+        attachedFiles.map(async (file) => {
+          const text = await file.text();
+          return `\n\n[File: ${file.name}]\n${text}`;
+        })
+      );
+      messageContent += fileContents.join('');
+    }
+
     const userMessage: Message = {
       id: crypto.randomUUID(),
       role: 'user',
-      content: inputValue,
+      content: messageContent,
       timestamp: new Date().toISOString(),
     };
 
@@ -163,6 +193,7 @@ export default function Dashboard() {
     saveChat(user.id, updatedChat);
     setChats(chats.map(c => c.id === updatedChat.id ? updatedChat : c));
     setInputValue('');
+    setAttachedFiles([]);
     setIsStreaming(true);
     refreshUser();
 
@@ -173,9 +204,9 @@ export default function Dashboard() {
         content: msg.content
       }));
 
-      // Call AI API with selected model if Auto AI is off
+      // Call AI API with selected model and mode
       const modelToUse = autoAI ? undefined : selectedModel;
-      const response = await callAIAPI(conversationMessages, activeChat?.avatarId, modelToUse);
+      const response = await callAIAPI(conversationMessages, activeChat?.avatarId, modelToUse, selectedMode);
       
       const modelName = autoAI 
         ? 'Auto AI' 
@@ -465,7 +496,68 @@ export default function Dashboard() {
           {/* Input Area */}
           <div className="border-t border-border/50 bg-card/30 p-4 flex-shrink-0">
             <div className="max-w-4xl mx-auto">
+              {/* Mode Selection */}
+              <div className="flex gap-2 mb-3 flex-wrap">
+                {[
+                  { id: 'general', label: 'General', icon: MessageSquare },
+                  { id: 'web', label: 'Web Search', icon: Globe },
+                  { id: 'study', label: 'Study Help', icon: BookOpen },
+                  { id: 'code', label: 'Coding', icon: Code },
+                  { id: 'business', label: 'Business', icon: Briefcase },
+                ].map((mode) => (
+                  <Button
+                    key={mode.id}
+                    size="sm"
+                    variant={selectedMode === mode.id ? 'default' : 'outline'}
+                    onClick={() => setSelectedMode(mode.id)}
+                    className="text-xs"
+                  >
+                    <mode.icon className="h-3 w-3 mr-1" />
+                    {mode.label}
+                  </Button>
+                ))}
+              </div>
+
+              {/* Attached Files */}
+              {attachedFiles.length > 0 && (
+                <div className="mb-3 flex gap-2 flex-wrap">
+                  {attachedFiles.map((file, index) => (
+                    <div
+                      key={index}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg text-sm"
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span className="max-w-[200px] truncate">{file.name}</span>
+                      <button
+                        onClick={() => removeFile(index)}
+                        className="hover:bg-primary/20 rounded p-0.5"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="flex items-end gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".txt,.md,.json,.csv"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  onClick={handleFileAttach}
+                  className="shrink-0"
+                  title="Attach text file"
+                >
+                  <Paperclip className="h-5 w-5" />
+                </Button>
                 <textarea
                   ref={inputRef}
                   value={inputValue}

@@ -11,16 +11,28 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, avatarId, model } = await req.json();
+    const { messages, avatarId, model, mode } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Build system prompt based on avatar
+    // Build system prompt based on mode and avatar
     let systemPrompt = "You are a helpful, friendly AI assistant. Keep responses natural and conversational.";
     
+    // Mode-specific prompts
+    if (mode === 'web') {
+      systemPrompt = "You are a web search assistant. Provide comprehensive, well-researched answers with citations when possible. Focus on current and accurate information.";
+    } else if (mode === 'study') {
+      systemPrompt = "You are a patient study tutor. Break down complex topics into simple explanations. Use examples and analogies. Help students understand concepts deeply.";
+    } else if (mode === 'code') {
+      systemPrompt = "You are an expert programming assistant. Provide clean, well-commented code examples. Explain solutions step-by-step and follow best practices.";
+    } else if (mode === 'business') {
+      systemPrompt = "You are a business consultant. Provide professional, actionable advice for business scenarios. Focus on strategy, efficiency, and practical solutions.";
+    }
+    
+    // Override with avatar personality if selected
     if (avatarId) {
       const avatarPrompts: Record<string, string> = {
         'gandhi': 'You are Mahatma Gandhi. Respond with wisdom about truth, non-violence, and peaceful resistance. Keep your responses thoughtful and inspirational.',

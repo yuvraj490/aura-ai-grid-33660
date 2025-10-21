@@ -10,6 +10,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Search, Send, HelpCircle, Book, MessageCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Help() {
   const { isAuthenticated } = useSupabaseAuth();
@@ -66,21 +67,31 @@ export default function Help() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate sending email to admin
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      const { data, error } = await supabase.functions.invoke('send-support-email', {
+        body: { name, email, message }
+      });
 
-    // TODO_BACKEND: Send actual email to ys8800221@gmail.com
-    console.log('Support email sent to ys8800221@gmail.com:', { name, email, message });
+      if (error) throw error;
 
-    toast({
-      title: 'Message sent!',
-      description: 'We\'ll get back to you as soon as possible.',
-    });
+      toast({
+        title: 'Message sent!',
+        description: 'We\'ll get back to you as soon as possible.',
+      });
 
-    setName('');
-    setEmail('');
-    setMessage('');
-    setIsSubmitting(false);
+      setName('');
+      setEmail('');
+      setMessage('');
+    } catch (error) {
+      console.error('Error sending support email:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to send message. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
