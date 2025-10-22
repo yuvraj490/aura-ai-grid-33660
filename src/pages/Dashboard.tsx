@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback, memo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -15,6 +16,69 @@ import {
 import { Chat, Message, getChats, saveChat, createNewChat, deleteChat } from '@/utils/storage';
 import { incrementPromptUsage, getRemainingPrompts } from '@/utils/auth';
 import { supabase } from '@/integrations/supabase/client';
+
+// Memoized chat item component
+const ChatItem = memo(({ 
+  chat, 
+  isActive, 
+  onSelect, 
+  onDelete 
+}: { 
+  chat: Chat; 
+  isActive: boolean; 
+  onSelect: (chat: Chat) => void; 
+  onDelete: (chatId: string) => void;
+}) => {
+  const handleClick = useCallback(() => {
+    onSelect(chat);
+  }, [chat, onSelect]);
+
+  const handleDelete = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDelete(chat.id);
+  }, [chat.id, onDelete]);
+
+  return (
+    <button
+      onClick={handleClick}
+      className={`w-full text-left p-3 rounded-lg transition-all duration-200 group ${
+        isActive
+          ? 'bg-primary/10 border border-primary/20'
+          : 'hover:bg-muted/50 border border-transparent'
+      }`}
+    >
+      <div className="flex items-start gap-2">
+        {chat.avatarId ? (
+          <User className="h-4 w-4 mt-1 shrink-0 text-primary" />
+        ) : (
+          <MessageSquare className="h-4 w-4 mt-1 shrink-0 text-muted-foreground" />
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-sm truncate">{chat.title}</p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            {chat.avatarName && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                {chat.avatarName}
+              </Badge>
+            )}
+            <p className="text-xs text-muted-foreground">
+              {chat.messages.length} msgs
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={handleDelete}
+          className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-destructive/10 rounded"
+          aria-label="Delete chat"
+        >
+          <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+        </button>
+      </div>
+    </button>
+  );
+});
+
+ChatItem.displayName = 'ChatItem';
 
 export default function Dashboard() {
   const { profile, isAuthenticated, refreshUser } = useSupabaseAuth();
@@ -78,30 +142,35 @@ export default function Dashboard() {
   }, [location.state, user]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [activeChat?.messages]);
+    if (activeChat?.messages && activeChat.messages.length > 0) {
+      const timer = setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [activeChat?.messages.length]);
 
-  const handleNewChat = () => {
+  const handleNewChat = useCallback(() => {
     if (!user) return;
     const newChat = createNewChat(user.id);
     // New chat clears avatar mode
-    setChats([newChat, ...chats]);
+    setChats(prev => [newChat, ...prev]);
     setActiveChat(newChat);
     toast({ title: 'New chat created' });
-  };
+  }, [user, toast]);
 
-  const handleDeleteChat = (chatId: string) => {
+  const handleDeleteChat = useCallback((chatId: string) => {
     if (!user) return;
     deleteChat(user.id, chatId);
-    const updatedChats = chats.filter(c => c.id !== chatId);
-    setChats(updatedChats);
-    
-    if (activeChat?.id === chatId) {
-      setActiveChat(updatedChats[0] || null);
-    }
-    
+    setChats(prev => {
+      const updatedChats = prev.filter(c => c.id !== chatId);
+      if (activeChat?.id === chatId) {
+        setActiveChat(updatedChats[0] || null);
+      }
+      return updatedChats;
+    });
     toast({ title: 'Chat deleted' });
-  };
+  }, [user, activeChat?.id, toast]);
 
   const callAIAPI = async (messages: Array<{role: string; content: string}>, avatarId?: string, model?: string, mode?: string): Promise<string> => {
     const { data, error } = await supabase.functions.invoke('chat', {
@@ -189,12 +258,14 @@ export default function Dashboard() {
       title: activeChat.messages.length === 0 ? inputValue.slice(0, 50) : activeChat.title,
     };
 
+    // Batch state updates
     setActiveChat(updatedChat);
-    saveChat(user.id, updatedChat);
-    setChats(chats.map(c => c.id === updatedChat.id ? updatedChat : c));
+    setChats(prev => prev.map(c => c.id === updatedChat.id ? updatedChat : c));
     setInputValue('');
     setAttachedFiles([]);
     setIsStreaming(true);
+    
+    saveChat(user.id, updatedChat);
     refreshUser();
 
     try {
@@ -226,9 +297,11 @@ export default function Dashboard() {
         updatedAt: new Date().toISOString(),
       };
 
+      // Batch state updates
       setActiveChat(finalChat);
+      setChats(prev => prev.map(c => c.id === finalChat.id ? finalChat : c));
+      
       saveChat(user.id, finalChat);
-      setChats(chats.map(c => c.id === finalChat.id ? finalChat : c));
     } catch (error) {
       console.error('Chat error:', error);
       toast({
@@ -256,8 +329,10 @@ export default function Dashboard() {
   const remainingPrompts = getRemainingPrompts();
   const promptUsagePercent = user ? (user.prompts_used / user.prompts_limit) * 100 : 0;
 
-  const filteredChats = chats.filter(chat =>
-    chat.title.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredChats = useMemo(() => 
+    chats.filter(chat =>
+      chat.title.toLowerCase().includes(searchQuery.toLowerCase())
+    ), [chats, searchQuery]
   );
 
   return (
@@ -312,49 +387,19 @@ export default function Dashboard() {
           </div>
 
           {/* Chat List */}
-          <div className="flex-1 overflow-y-auto p-2 min-h-0">
-            {filteredChats.map((chat) => (
-              <button
-                key={chat.id}
-                onClick={() => setActiveChat(chat)}
-                className={`w-full text-left p-3 rounded-lg mb-1 transition-colors group ${
-                  activeChat?.id === chat.id
-                    ? 'bg-primary/10 border border-primary/20'
-                    : 'hover:bg-muted/50'
-                }`}
-              >
-                <div className="flex items-start gap-2">
-                  {chat.avatarId ? (
-                    <User className="h-4 w-4 mt-1 shrink-0 text-primary" />
-                  ) : (
-                    <MessageSquare className="h-4 w-4 mt-1 shrink-0 text-muted-foreground" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{chat.title}</p>
-                    <div className="flex items-center gap-1">
-                      {chat.avatarName && (
-                        <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">
-                          {chat.avatarName}
-                        </Badge>
-                      )}
-                      <p className="text-xs text-muted-foreground truncate">
-                        {chat.messages.length} messages
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteChat(chat.id);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                  </button>
-                </div>
-              </button>
-            ))}
-          </div>
+          <ScrollArea className="flex-1 p-2">
+            <div className="space-y-1">
+              {filteredChats.map((chat) => (
+                <ChatItem
+                  key={chat.id}
+                  chat={chat}
+                  isActive={activeChat?.id === chat.id}
+                  onSelect={setActiveChat}
+                  onDelete={handleDeleteChat}
+                />
+              ))}
+            </div>
+          </ScrollArea>
 
           {/* Quick Stats */}
           <div className="p-4 border-t border-border/50 bg-card/50 flex-shrink-0">
