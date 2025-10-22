@@ -324,12 +324,23 @@ export default function Dashboard() {
                 }`}
               >
                 <div className="flex items-start gap-2">
-                  <MessageSquare className="h-4 w-4 mt-1 shrink-0 text-muted-foreground" />
+                  {chat.avatarId ? (
+                    <User className="h-4 w-4 mt-1 shrink-0 text-primary" />
+                  ) : (
+                    <MessageSquare className="h-4 w-4 mt-1 shrink-0 text-muted-foreground" />
+                  )}
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{chat.title}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {chat.messages.length} messages
-                    </p>
+                    <div className="flex items-center gap-1">
+                      {chat.avatarName && (
+                        <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">
+                          {chat.avatarName}
+                        </Badge>
+                      )}
+                      <p className="text-xs text-muted-foreground truncate">
+                        {chat.messages.length} messages
+                      </p>
+                    </div>
                   </div>
                   <button
                     onClick={(e) => {

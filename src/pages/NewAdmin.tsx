@@ -23,6 +23,7 @@ interface UserData {
   created_at: string;
   chat_count: number;
   last_active?: string;
+  total_messages?: number;
 }
 
 export default function NewAdmin() {
@@ -35,8 +36,12 @@ export default function NewAdmin() {
   const [stats, setStats] = useState({
     totalUsers: 0,
     activeToday: 0,
+    activeThisWeek: 0,
+    activeThisMonth: 0,
     totalChats: 0,
     totalMessages: 0,
+    avgMessagesPerChat: 0,
+    avgChatsPerUser: 0,
     freeUsers: 0,
     premiumUsers: 0,
   });
@@ -65,29 +70,48 @@ export default function NewAdmin() {
     // Fetch chat logs to count
     const { data: chatLogs, error: logsError } = await supabase
       .from('chat_logs')
-      .select('user_id, created_at');
+      .select('user_id, created_at, prompt_length, response_length');
 
     if (logsError) {
       console.error('Error loading chat logs:', logsError);
     }
 
     // Calculate stats
-    const today = new Date().toDateString();
+    const today = new Date();
+    const todayStr = today.toDateString();
+    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+    
     const activeToday = new Set();
+    const activeThisWeek = new Set();
+    const activeThisMonth = new Set();
+    let totalMessages = 0;
     
     chatLogs?.forEach(log => {
-      const logDate = new Date(log.created_at).toDateString();
-      if (logDate === today) {
+      const logDate = new Date(log.created_at);
+      const logDateStr = logDate.toDateString();
+      
+      totalMessages += 2; // Count both user message and AI response
+      
+      if (logDateStr === todayStr) {
         activeToday.add(log.user_id);
+      }
+      if (logDate >= weekAgo) {
+        activeThisWeek.add(log.user_id);
+      }
+      if (logDate >= monthAgo) {
+        activeThisMonth.add(log.user_id);
       }
     });
 
     // Count chats per user and get last active
     const userChatCounts: { [key: string]: number } = {};
+    const userMessageCounts: { [key: string]: number } = {};
     const userLastActive: { [key: string]: string } = {};
     
     chatLogs?.forEach(log => {
       userChatCounts[log.user_id] = (userChatCounts[log.user_id] || 0) + 1;
+      userMessageCounts[log.user_id] = (userMessageCounts[log.user_id] || 0) + 2;
       
       if (!userLastActive[log.user_id] || 
           new Date(log.created_at) > new Date(userLastActive[log.user_id])) {
@@ -98,16 +122,25 @@ export default function NewAdmin() {
     const usersWithChatCount = profiles?.map(profile => ({
       ...profile,
       chat_count: userChatCounts[profile.id] || 0,
+      total_messages: userMessageCounts[profile.id] || 0,
       last_active: userLastActive[profile.id]
     })) || [];
 
     setAllUsers(usersWithChatCount);
 
+    const totalChats = chatLogs?.length || 0;
+    const avgMessagesPerChat = totalChats > 0 ? totalMessages / totalChats : 0;
+    const avgChatsPerUser = profiles?.length ? totalChats / profiles.length : 0;
+
     setStats({
       totalUsers: profiles?.length || 0,
       activeToday: activeToday.size,
-      totalChats: chatLogs?.length || 0,
-      totalMessages: chatLogs?.length || 0,
+      activeThisWeek: activeThisWeek.size,
+      activeThisMonth: activeThisMonth.size,
+      totalChats,
+      totalMessages,
+      avgMessagesPerChat: Math.round(avgMessagesPerChat * 10) / 10,
+      avgChatsPerUser: Math.round(avgChatsPerUser * 10) / 10,
       freeUsers: profiles?.filter(u => u.plan === 'free').length || 0,
       premiumUsers: profiles?.filter(u => u.plan === 'premium').length || 0,
     });
@@ -118,7 +151,7 @@ export default function NewAdmin() {
       .from('profiles')
       .update({ 
         plan: newPlan,
-        prompts_limit: newPlan === 'free' ? 50 : 999999,
+        prompts_limit: newPlan === 'free' ? 10 : 999999,
         prompts_used: 0
       })
       .eq('id', userId);
@@ -224,6 +257,44 @@ export default function NewAdmin() {
             </Card>
           </div>
 
+          {/* Engagement Analytics */}
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
+            <Card className="p-6 border-border/50 bg-card/50">
+              <div className="flex items-center gap-2 mb-4">
+                <Activity className="h-5 w-5 text-primary" />
+                <h3 className="font-semibold">Weekly Active</h3>
+              </div>
+              <p className="text-2xl font-bold">{stats.activeThisWeek}</p>
+              <p className="text-xs text-muted-foreground mt-1">users in the last 7 days</p>
+            </Card>
+
+            <Card className="p-6 border-border/50 bg-card/50">
+              <div className="flex items-center gap-2 mb-4">
+                <Activity className="h-5 w-5 text-primary" />
+                <h3 className="font-semibold">Monthly Active</h3>
+              </div>
+              <p className="text-2xl font-bold">{stats.activeThisMonth}</p>
+              <p className="text-xs text-muted-foreground mt-1">users in the last 30 days</p>
+            </Card>
+
+            <Card className="p-6 border-border/50 bg-card/50">
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                <h3 className="font-semibold">Avg Engagement</h3>
+              </div>
+              <div className="space-y-2">
+                <div>
+                  <p className="text-lg font-bold">{stats.avgChatsPerUser}</p>
+                  <p className="text-xs text-muted-foreground">chats per user</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold">{stats.avgMessagesPerChat}</p>
+                  <p className="text-xs text-muted-foreground">messages per chat</p>
+                </div>
+              </div>
+            </Card>
+          </div>
+
           {/* Plans Distribution */}
           <div className="grid md:grid-cols-2 gap-6 mb-8">
             <Card className="p-6 border-border/50 bg-card/50">
@@ -294,8 +365,9 @@ export default function NewAdmin() {
                     <th className="text-left p-3 font-semibold">Name</th>
                     <th className="text-left p-3 font-semibold">Email</th>
                     <th className="text-left p-3 font-semibold">Plan</th>
-                    <th className="text-left p-3 font-semibold">Prompts Used</th>
+                    <th className="text-left p-3 font-semibold">Prompts</th>
                     <th className="text-left p-3 font-semibold">Chats</th>
+                    <th className="text-left p-3 font-semibold">Messages</th>
                     <th className="text-left p-3 font-semibold">Joined</th>
                     <th className="text-left p-3 font-semibold">Last Active</th>
                     <th className="text-left p-3 font-semibold">Actions</th>
@@ -318,10 +390,11 @@ export default function NewAdmin() {
                       </td>
                       <td className="p-3">
                         <span className="text-sm">
-                          {u.plan === 'free' ? `${u.prompts_used}/${u.prompts_limit}` : 'Unlimited'}
+                          {u.plan === 'free' ? `${u.prompts_used}/${u.prompts_limit}` : '∞'}
                         </span>
                       </td>
                       <td className="p-3">{u.chat_count}</td>
+                      <td className="p-3">{u.total_messages || 0}</td>
                       <td className="p-3 text-xs text-muted-foreground">
                         {new Date(u.created_at).toLocaleDateString()}
                       </td>
