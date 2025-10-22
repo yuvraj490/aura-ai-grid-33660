@@ -10,7 +10,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Search, Send, HelpCircle, Book, MessageCircle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 
 export default function Help() {
   const { isAuthenticated } = useSupabaseAuth();
@@ -21,7 +20,6 @@ export default function Help() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const faqs = [
     {
@@ -65,33 +63,16 @@ export default function Help() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
+    
+    // Simple contact info display - no backend needed
+    toast({
+      title: 'Contact Information',
+      description: 'Please email us at: ys8800221@gmail.com',
+    });
 
-    try {
-      const { data, error } = await supabase.functions.invoke('send-support-email', {
-        body: { name, email, message }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: 'Message sent!',
-        description: 'We\'ll get back to you as soon as possible.',
-      });
-
-      setName('');
-      setEmail('');
-      setMessage('');
-    } catch (error) {
-      console.error('Error sending support email:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to send message. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    setName('');
+    setEmail('');
+    setMessage('');
   };
 
   return (
@@ -226,15 +207,10 @@ export default function Help() {
 
                 <Button
                   type="submit"
-                  disabled={isSubmitting}
                   className="w-full md:w-auto bg-gradient-primary"
                 >
-                  {isSubmitting ? 'Sending...' : (
-                    <>
-                      <Send className="h-4 w-4 mr-2" />
-                      Send Message
-                    </>
-                  )}
+                  <Send className="h-4 w-4 mr-2" />
+                  Get Contact Info
                 </Button>
               </form>
 
